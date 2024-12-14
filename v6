@@ -1,0 +1,213 @@
+/*********************************************************
+Course Section: Section 3 - 12:00 p.m.
+Program:       MathTutorV6
+Programmers:   Goy Tuach
+Date:          10/22/24
+GitHub URL:    https://github.com/gotuac01/Mathtutor_v6
+Description:   This is a fun and silly math tutor. We have
+               upgraded the program to have more features.
+               We ended up adding levels to the program.
+               We also gave users a choice of doing
+               more problems. With the levels if you get
+               multiple questions right you end up getting
+               harder questions on level 2 by making it 1-10
+               to 1-20. This really is a good tutor for
+               all kinds of ages. Helps people learn more
+               difficult math.
+**********************************************************/
+
+#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <ctime>
+#include <limits>
+#include <vector>
+#include <iomanip>
+#include <fstream>
+#include <stdexcept>
+
+using namespace std; // used to not put std in cin/cout
+
+// Global constants
+const int MAX_ATTEMPTS = 3;
+const int LEVEL_RANGE_CHANGE = 10;
+const string FILE_NAME = "mathtutor.txt";
+
+// Function prototypes
+void DisplayGameIntro();
+string GetUserName();
+bool YesNoQuestion(const string& question);
+void DisplaySummaryReport(const vector<vector<string>>& questions, int totalCorrect, int totalIncorrect);
+void GiveThreeAttempts(int& totalCorrect, int& totalIncorrect, vector<string>& row, int leftNum, char symbol, int rightNum, int correctAnswer, const string& userName, int mathLevel);
+void CheckForLevelChange(int& totalCorrect, int& totalIncorrect, int& mathLevel, int& currentRange);
+vector<string> GenerateRandomQuestion(int currentRange, int& leftNum, int& rightNum, char& symbol, int& correctAnswer, int questionType);
+void SaveCurrentGame(const vector<vector<string>>& questions);
+void LoadPreviousGame(vector<vector<string>>& questions, int& mathLevel);
+
+int main() {
+    int leftNum = 0; // Generate random numbers between 1 and 10
+    int rightNum = 0; // Generate random numbers between 1 and 10
+    char symbol = '?'; // Gets character
+    int correctAnswer = 0; // used for the correct answer
+    int totalCorrect = 0; // used to calculate the total correct questions a user has gotten
+    int totalIncorrect = 0; // used to calculate the total incorrect questions a user has gotten
+    int mathLevel = 1; // used for the math level
+    int currentRange = 10; // Initial range of random numbers
+    string userName = "?"; // Storing/Shows Player's User's Name
+
+    // Seed the random number generator
+    srand(time(0));
+
+    // 2D vector to store questions and attempts
+    vector<vector<string>> questions;
+
+    // Display the game intro
+    DisplayGameIntro();
+
+    // Get user's name
+    userName = GetUserName();
+
+    // Load previous game
+    try {
+        LoadPreviousGame(questions, mathLevel);
+    } catch (const exception& e) {
+        cout << "*\tError: " << e.what() << endl;
+    }
+
+    do {
+        // Generate a random question
+        int questionType = rand() % 4 + 1;
+        vector<string> row = GenerateRandomQuestion(currentRange, leftNum, rightNum, symbol, correctAnswer, questionType);
+
+        // Give the user three attempts to answer the question
+        GiveThreeAttempts(totalCorrect, totalIncorrect, row, leftNum, symbol, rightNum, correctAnswer, userName, mathLevel);
+
+        // Add the row to the 2D vector questions
+        questions.push_back(row);
+
+        // Check if the user's level should change
+        CheckForLevelChange(totalCorrect, totalIncorrect, mathLevel, currentRange);
+
+    } while (YesNoQuestion("*\tDo you want to continue?"));
+
+    // Save current game
+    try {
+        SaveCurrentGame(questions);
+    } catch (const exception& e) {
+        cout << "*\tError: " << e.what() << endl;
+    }
+
+    // Display the summary report
+    DisplaySummaryReport(questions, totalCorrect, totalIncorrect);
+
+    return 0;
+}
+
+// Function implementations
+void DisplayGameIntro() {
+    cout << " ______________________________________________________________ " << endl;
+    cout << "                                                                " << endl;
+    cout << "    __  __         _    _       _______      _                  " << endl;
+    cout << "   |  ||  |       | |  | |     |__   __|    | |                 " << endl;
+    cout << "   |      |  __ _ | |_ | |__      | | _   _ | |_  ___   _ __    " << endl;
+    cout << "   | |||| | / _` || __|| '_ |     | || | | || __|/ _ | | '__|   " << endl;
+    cout << "   | |  | || (_| || |_ | | | |    | || |_| || |_| (_) || |      " << endl;
+    cout << "   |_|  |_| |__,_| |__||_| |_|    |_| |__,_| |__||___/ |_|      " << endl;
+    cout << "                                                                " << endl;
+    cout << " ______________________________________________________________ " << endl;
+    cout << endl;
+    cout << "|           Welcome to the Craziest Math Tutor Game!           |" << endl;
+    cout << " ______________________________________________________________ " << endl;
+    cout << endl;
+}
+
+string GetUserName() {
+    string userName;
+    cout << "*\tPlease enter your name: ";
+    cin >> userName;
+    cout << endl;
+    cout << "*\tWelcome " << userName << " to the Math Tutor!" << endl;
+    cout << endl;
+    return userName;
+}
+
+bool YesNoQuestion(const string& question) {
+    string userInput;
+    while (true) {
+        cout << question << " (y=yes | n=no): ";
+        getline(cin, userInput);
+        for (char& ch : userInput) {
+            ch = tolower(ch);
+        }
+        if (userInput == "y" || userInput == "yes") {
+            return true;
+        } else if (userInput == "n" || userInput == "no") {
+            return false;
+        } else {
+            cout << "*\tInvalid input, please try again..." << endl;
+        }
+    }
+}
+
+void GiveThreeAttempts(int& totalCorrect, int& totalIncorrect, vector<string>& row, int leftNum, char symbol, int rightNum, int correctAnswer, const string& userName, int mathLevel) {
+    int userAnswer;
+    for (int i = 1; i <= MAX_ATTEMPTS; i++) {
+        cout << "[Level #" << mathLevel << "] " << userName << ", what is "
+                << leftNum << " " << symbol << " " << rightNum << " = ";
+        while (!(cin >> userAnswer)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "\tInvalid input!" << endl;
+            cout << "\tPlease enter a number: ";
+        }
+        cout << endl;
+        if (userAnswer == correctAnswer) {
+            cout << "*\tCorrect! It looks like you are a math genius." << endl;
+            row.push_back(to_string(i)); // Add number of attempts
+            totalCorrect++;
+            break;
+        } else if (MAX_ATTEMPTS - i == 0) {
+            cout << "*\tSorry you are out of attempts" << endl;
+            cout << "*\tThe correct answer was: " << correctAnswer << endl;
+            row.push_back("0"); // Add error value 0
+        } else {
+            cout << "*\tIncorrect. You almost had it!" << endl;
+            totalIncorrect++;
+            cout << "*\tYou have " << (MAX_ATTEMPTS - i) << " attempts left." << endl;
+            cout << endl;
+        }
+    }
+}
+
+void DisplaySummaryReport(const vector<vector<string>>& questions, int totalCorrect, int totalIncorrect) {
+    cout << "Summary Report" << endl;
+
+    for (const auto& question : questions) {
+        string level = question[0];
+        string left_num = question[1];
+        string math_symbol = question[2];
+        string right_num = question[3];
+        string correct_answer = question[4];
+        string attempts = question[5];
+
+        cout << setw(10) << left << level << setw(5) << left << left_num << " "
+             << math_symbol << " " << right_num << " = " << correct_answer << " ";
+
+        if (attempts != "0") {
+            cout << "Attempts: " << attempts << endl;
+        } else {
+            cout << "Incorrect" << endl;
+        }
+    }
+
+    cout << "Total Correct: " << totalCorrect << endl;
+    cout << "Total Incorrect: " << totalIncorrect << endl;
+}
+
+void CheckForLevelChange(int& totalCorrect, int& totalIncorrect, int& mathLevel, int& currentRange) {
+    if (totalCorrect >= 3) {
+        mathLevel++;
+        currentRange += LEVEL_RANGE_CHANGE;
+        totalCorrect = 0;
+        totalIncorrect = 0;
+        cout << "*\tCongratulations! You are
